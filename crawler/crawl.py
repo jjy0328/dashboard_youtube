@@ -3,7 +3,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from fake_useragent import UserAgent
@@ -67,6 +67,7 @@ def extract_ad_titles():
 
     while time.time() - start_time < waiting_time:
         try:
+            
             ad_title_element = driver.find_element(By.XPATH, '//div[@class="ytp-ad-text ytp-flyout-cta-headline"]')
             ad_title = ad_title_element.text
 
@@ -78,9 +79,9 @@ def extract_ad_titles():
             time.sleep(3)
             continue
 
-        # Wait for the ad to disappear
-        while ad_title_element.is_displayed():
-            time.sleep(3)
+        except StaleElementReferenceException:
+            break
+        time.sleep(5)
 
     return ad_titles
 
@@ -98,7 +99,7 @@ except Exception as e:
     pass 
 
 # 검색어 입력 : 검색어 입력
-text_to_type = "촉촉한 수분크림"
+text_to_type = "드라마 요약"
 
 # 한 글자씩 입력하면서 각 글자 사이에 지연 주기 -> 일정한 시간을 줄 경우, 봇으로 탐지할 가능성이 높음
 for char in text_to_type:
