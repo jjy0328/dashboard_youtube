@@ -8,6 +8,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from fake_useragent import UserAgent
 
+from element import *
+
 import time
 import random
 import pandas as pd
@@ -38,11 +40,11 @@ typing_time = random.uniform(0.3, 0.5) # 검색어 입력을 위한 time.sleep()
 # 기본 정보 수집
 def extract_web_elements():
     # 요소 찾기
-    title_element = driver.find_element(By.XPATH, '//*[@id="title"]/h1/yt-formatted-string')
-    user_element = driver.find_element(By.XPATH, '//*[@id="text"]/a')
-    expended_element = driver.find_element(By.XPATH, '//*[@id="expand"]')
-    content_element = driver.find_element(By.XPATH, '//*[@id="description-inline-expander"]/yt-attributed-string/span/span[1]')
-    keyword_elements = driver.find_elements(By.XPATH, '//*[@id="info"]/a')
+    title_element = driver.find_element(By.XPATH, e_title)
+    user_element = driver.find_element(By.XPATH, e_user)
+    expended_element = driver.find_element(By.XPATH, e_expended)
+    content_element = driver.find_element(By.XPATH, e_content)
+    keyword_elements = driver.find_elements(By.XPATH, e_keyword)
 
     # 추출된 요소들의 텍스트 가져오기
     title = title_element.text
@@ -67,8 +69,7 @@ def extract_ad_titles():
 
     while time.time() - start_time < waiting_time:
         try:
-            
-            ad_title_element = driver.find_element(By.XPATH, '//div[@class="ytp-ad-text ytp-flyout-cta-headline"]')
+            ad_title_element = driver.find_element(By.XPATH, e_ad_title)
             ad_title = ad_title_element.text
 
             if ad_title and ad_title not in ad_titles:
@@ -85,43 +86,54 @@ def extract_ad_titles():
 
     return ad_titles
 
+# 연관된 동영상 찾기
+def click_random_related_video(sleep_time):
+    # 연관된 동영상 링크 찾기
+    related_links_elements = driver.find_elements(By.XPATH, e_related_links)
 
-# 검색어 입력 : 서치 박스 클릭
-search_box = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox')))
-search_box.click()
+    # 리스트가 비어있지 않은 경우에만 진행
+    if related_links_elements:
+        # 랜덤으로 하나의 웹 요소 선택
+        random_element = random.choice(related_links_elements)
 
-# # 만약 검색어가 입력되어 있다면 지워주기
-try:
-    delete_btn = driver.find_element(By.XPATH, '//*[@id="search-clear-button"]/ytd-button-renderer/yt-button-shape/button/yt-touch-feedback-shape/div/div[2]')
+        # 페이지 로딩 대기
+        time.sleep(sleep_time)
+
+        # 선택된 요소 클릭
+        random_element.click()
+    else:
+        print("연관된 동영상이 없습니다.")
+
+
+def perform_youtube_search(driver, search_query, typing_time, sleep_time, extract_ad_titles, extract_web_elements):
+    # 검색어 입력 박스 접근
+    search_box = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, e_search_box)))
+    search_box.click()
+
+    # 검색어 입력 박스 내용 지우기
+    try:
+        delete_btn = driver.find_element(By.XPATH, e_delete_btn)
+        time.sleep(sleep_time)
+        delete_btn.click()
+    except Exception:
+        pass
+
+    # 검색어 입력
+    for char in search_query:
+        search_box.send_keys(char)
+        time.sleep(typing_time)
+    search_box.send_keys(Keys.ENTER)
+
     time.sleep(sleep_time)
-    delete_btn.click()
-except Exception as e:
-    pass 
 
-# 검색어 입력 : 검색어 입력
-text_to_type = "드라마 요약"
-
-# 한 글자씩 입력하면서 각 글자 사이에 지연 주기 -> 일정한 시간을 줄 경우, 봇으로 탐지할 가능성이 높음
-for char in text_to_type:
-    search_box.send_keys(char)
-    time.sleep(typing_time)  # 지연 시간은 필요에 따라 조정 가능
-search_box.send_keys(Keys.ENTER)
-
-time.sleep(sleep_time)
-# 랜덤하게 하나의 동영상 재생
-title_to_click = driver.find_elements(By.XPATH, '//*[@id="video-title"]')
-for _ in range(len(title_to_click)):
-    random_index = random.randint(0, len(title_to_click) - 1)
-    if title_to_click[random_index].is_displayed() and title_to_click[random_index].is_enabled():
-        title_to_click[random_index].click()
-
-        # 광고 정보 먼저 수집
-        ad_info = extract_ad_titles()
-        print(f"광고 제목 : {ad_info}")
-
-        # 동영상 정보 수집
-        data = extract_web_elements()
-        print(f"영상 정보 : {data}")
+    # 랜덤하게 하나의 동영상 클릭
+    title_to_click = driver.find_elements(By.XPATH, e_title_to_click)
+    for _ in range(len(title_to_click)):
+        random_index = random.randint(0, len(title_to_click) - 1)
+        if title_to_click[random_index].is_displayed() and title_to_click[random_index].is_enabled():
+            title_to_click[random_index].click()
+            break
 
 
 # 브라우저 닫기
